@@ -3,7 +3,6 @@ package depsolver;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Date;
 import java.util.List;
 
 import com.alibaba.fastjson.JSON;
@@ -15,7 +14,6 @@ public class Main {
 	}
 
 	public static void main(String[] args) throws IOException {
-		long t1 = new Date().getTime();
 		TypeReference<List<Package>> repoType = new TypeReference<List<Package>>() {
 		};
 		List<Package> repositories = JSON.parseObject(Utils.readFile(args[0]), repoType);
@@ -134,9 +132,10 @@ public class Main {
 				break;
 			}
 		}
-		long t2 = new Date().getTime();
-		// System.out.println("executed in: " + (t2 - t1));
-		System.out.println(finalResult.getCost());
-		System.out.println(JSON.toJSONString(finalResult.getCommands()));
+
+		Utils.writeFile(JSON.toJSONString(finalResult.getCommands()));
+
+		// System.out.println(finalResult.getCost());
+		// System.out.println(JSON.toJSONString(finalResult.getCommands()));
 	}
 }

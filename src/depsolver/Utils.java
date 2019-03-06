@@ -2,6 +2,7 @@ package depsolver;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.util.List;
 
@@ -23,6 +24,18 @@ public class Utils {
 		} finally {
 			if (br != null) {
 				br.close();
+			}
+		}
+	}
+
+	public static void writeFile(String json) throws IOException {
+		FileWriter fw = null;
+		try {
+			fw = new FileWriter("commands.json");
+			fw.write(json);
+		} finally {
+			if (fw != null) {
+				fw.close();
 			}
 		}
 	}
