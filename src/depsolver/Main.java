@@ -133,7 +133,7 @@ public class Main {
 			}
 		}
 
-		Utils.writeFile(JSON.toJSONString(finalResult.getCommands()));
+		Utils.writeFile(args[0].replace("repository.json", "commands.json"), JSON.toJSONString(finalResult.getCommands()));
 
 		// System.out.println(finalResult.getCost());
 		// System.out.println(JSON.toJSONString(finalResult.getCommands()));

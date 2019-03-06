@@ -28,10 +28,10 @@ public class Utils {
 		}
 	}
 
-	public static void writeFile(String json) throws IOException {
+	public static void writeFile(String filename, String json) throws IOException {
 		FileWriter fw = null;
 		try {
-			fw = new FileWriter("commands.json");
+			fw = new FileWriter(filename);
 			fw.write(json);
 		} finally {
 			if (fw != null) {
