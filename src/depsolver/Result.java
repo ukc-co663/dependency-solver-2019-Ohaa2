@@ -1,42 +1,31 @@
 package depsolver;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 public class Result {
 
-	private long cost = 0L;
-	private Map<String, Map<String, Integer>> conflicts;
-	private List<String> commands;
+	private Long cost;
+	private Set<String> commands;
 
-	public long getCost() {
+	public Long getCost() {
 		return cost;
 	}
 
-	public void setCost(long cost) {
+	public void setCost(Long cost) {
 		this.cost = cost;
 	}
 
-	public Map<String, Map<String, Integer>> getConflicts() {
-		return conflicts;
-	}
-
-	public void setConflicts(Map<String, Map<String, Integer>> conflicts) {
-		this.conflicts = conflicts;
-	}
-
-	public List<String> getCommands() {
+	public Set<String> getCommands() {
 		return commands;
 	}
 
-	public void setCommands(List<String> commands) {
+	public void setCommands(Set<String> commands) {
 		this.commands = commands;
 	}
 
-	public Result() {
-		this.commands = new ArrayList<String>();
-		this.conflicts = new HashMap<String, Map<String, Integer>>();
+	public Result(Long cost) {
+		this.cost = cost;
+		this.commands = new LinkedHashSet<String>();
 	}
 }

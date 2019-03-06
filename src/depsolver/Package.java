@@ -3,7 +3,7 @@ package depsolver;
 import java.util.ArrayList;
 import java.util.List;
 
-public class Package {
+public class Package implements Comparable<Package> {
 
 	private String name;
 	private String version;
@@ -54,5 +54,10 @@ public class Package {
 	public Package() {
 		this.depends = new ArrayList<List<String>>();
 		this.conflicts = new ArrayList<String>();
+	}
+
+	@Override
+	public int compareTo(Package package1) {
+		return this.name.compareTo(package1.getName());
 	}
 }
