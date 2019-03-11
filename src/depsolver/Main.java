@@ -150,7 +150,7 @@ public class Main {
 		// + "commands.json",
 		// JSON.toJSONString(finalResult.getCommands(), true));
 
-		System.out.println(finalResult.getCost());
+		//System.out.println(finalResult.getCost());
 		System.out.println(JSON.toJSONString(finalResult.getCommands()));
 	}
 }
