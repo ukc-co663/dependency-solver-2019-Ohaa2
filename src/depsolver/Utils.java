@@ -130,43 +130,51 @@ public class Utils {
 			for (int j = 0; j < pack.getDepends().get(i).size(); j++) {
 				String[] decompsedDependant = Utils.decomposeConstraint(pack.getDepends().get(i).get(j), repositories);
 				for (Package package1 : repositories) {
-					boolean dependantMatch = false;
+					boolean isMatched = false;
 					Result local = new Result(0L);
 					if (package1.getName().equals(decompsedDependant[0])) {
 						switch (decompsedDependant[1]) {
 						case ">=":
 							if (package1.getVersion().compareTo(decompsedDependant[2]) >= 0) {
-								dependantMatch = true;
+								isMatched = true;
 							}
 							break;
 						case ">":
 							if (package1.getVersion().compareTo(decompsedDependant[2]) > 0) {
-								dependantMatch = true;
+								isMatched = true;
 							}
 							break;
 						case "<=":
 							if (package1.getVersion().compareTo(decompsedDependant[2]) <= 0) {
-								dependantMatch = true;
+								isMatched = true;
 							}
 							break;
 						case "<":
 							if (package1.getVersion().compareTo(decompsedDependant[2]) < 0) {
-								dependantMatch = true;
+								isMatched = true;
 							}
 							break;
 						case "=":
 							if (package1.getVersion().compareTo(decompsedDependant[2]) == 0) {
-								dependantMatch = true;
+								isMatched = true;
 							}
 							break;
 						case "":
-							dependantMatch = true;
+							isMatched = true;
 							break;
 						}
-						if (dependantMatch && !Utils.conflictsExist(package1, installedPackages, repositories)) {
+						if (isMatched && !Utils.conflictsExist(package1, installedPackages, repositories)) {
 							if ((installed = installPackage(local, package1, installedPackages, repositories,
 									breakloop))) {
-								disjunct = (disjunct.getCost() > local.getCost()) ? local : disjunct;
+								if (disjunct.getCost() > local.getCost()) {
+									for (String cmd : disjunct.getCommands()) {
+										installedPackages.remove(cmd.substring(1));
+									}
+									disjunct = local;
+									for (String cmd : disjunct.getCommands()) {
+										installedPackages.add(cmd.substring(1));
+									}
+								}
 							}
 							breakloop.remove(breakloop.size() - 1);
 						}
