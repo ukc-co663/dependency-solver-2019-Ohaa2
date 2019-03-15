@@ -163,7 +163,7 @@ public class Utils {
 				if (disjunct.getCost() > oneDeptResult.getCost()) {
 					disjunct = oneDeptResult;
 				} else if (disjunct.getCost() == oneDeptResult.getCost()) {
-					if (constraints.contains(String
+					if (oneDeptResult.getCommands().size()> 0 && constraints.contains(String
 							.valueOf(oneDeptResult.getCommands().toArray()[oneDeptResult.getCommands().size() - 1]))) {
 						disjunct = oneDeptResult;
 					}
