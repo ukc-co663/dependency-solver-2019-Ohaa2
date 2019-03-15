@@ -10,11 +10,6 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import javax.script.ScriptEngine;
-import javax.script.ScriptEngineManager;
-import javax.script.ScriptException;
-
-@SuppressWarnings("restriction")
 public class Utils {
 
 	public static Long uninstallCost = 1000000L;
@@ -59,13 +54,10 @@ public class Utils {
 		return constraintArray;
 	}
 
-	public static boolean conflictsExist(Package package1, Map<String, List<String>> installedPackages)
-			throws ScriptException {
+	public static boolean conflictsExist(Package package1, Map<String, List<String>> installedPackages) {
 		if (package1.getConflicts() == null || package1.getConflicts().isEmpty()) {
 			return false;
 		} else {
-			ScriptEngineManager scriptEngineManager = new ScriptEngineManager();
-			ScriptEngine scriptEngine = scriptEngineManager.getEngineByName("JavaScript");
 			for (String conflict : package1.getConflicts()) {
 				String[] decompsedConflict = decomposeConstraint(conflict);
 				if (installedPackages.get(decompsedConflict[0]) != null) {
@@ -77,8 +69,7 @@ public class Utils {
 						}
 					} else {
 						for (String version : installedPackages.get(decompsedConflict[0])) {
-							if (Boolean.valueOf(String.valueOf(scriptEngine.eval(
-									version.compareTo(decompsedConflict[2]) + " " + decompsedConflict[1] + " 0")))) {
+							if (Utils.eval(version.compareTo(decompsedConflict[2]), decompsedConflict[1], 0)) {
 								return true;
 							}
 						}
@@ -91,7 +82,7 @@ public class Utils {
 	}
 
 	public static boolean installPackage(Result result, Package package1, Map<String, List<String>> installedPackages,
-			Map<String, Map<String, Package>> repositories, List<String> path) throws ScriptException {
+			Map<String, Map<String, Package>> repositories, List<String> path) {
 		if (path.contains(package1.getName())) {
 			return false;
 		} else {
@@ -127,16 +118,12 @@ public class Utils {
 				if (decompsedDependant[1].equals("=")) {
 					installList.add(repositories.get(decompsedDependant[0]).get(decompsedDependant[2]));
 				} else {
-					ScriptEngineManager scriptEngineManager = new ScriptEngineManager();
-					ScriptEngine scriptEngine = scriptEngineManager.getEngineByName("JavaScript");
 					if (repositories.get(decompsedDependant[0]) != null) {
 						for (String version : repositories.get(decompsedDependant[0]).keySet()) {
 							if (decompsedDependant[1].equals("")) {
 								installList.add(repositories.get(decompsedDependant[0]).get(version));
 							} else {
-								if (Boolean.valueOf(
-										String.valueOf(scriptEngine.eval(version.compareTo(decompsedDependant[2]) + " "
-												+ decompsedDependant[1] + " 0")))) {
+								if (Utils.eval(version.compareTo(decompsedDependant[2]), decompsedDependant[1], 0)) {
 									installList.add(repositories.get(decompsedDependant[0]).get(version));
 								}
 							}
@@ -194,8 +181,7 @@ public class Utils {
 	}
 
 	public static boolean uninstallConflicts(Result result, Package package1,
-			Map<String, Map<String, Package>> repositories, Map<String, List<String>> installedPackages)
-			throws ScriptException {
+			Map<String, Map<String, Package>> repositories, Map<String, List<String>> installedPackages) {
 		if (package1 != null) {
 			for (String conflict : package1.getConflicts()) {
 				List<Package> uninstallList = new ArrayList<>();
@@ -203,14 +189,11 @@ public class Utils {
 				if (decompsedConflict[1].equals("=")) {
 					uninstallList.add(repositories.get(decompsedConflict[0]).get(decompsedConflict[2]));
 				} else {
-					ScriptEngineManager scriptEngineManager = new ScriptEngineManager();
-					ScriptEngine scriptEngine = scriptEngineManager.getEngineByName("JavaScript");
 					for (String version : repositories.get(decompsedConflict[0]).keySet()) {
 						if (decompsedConflict[1].equals("")) {
 							uninstallList.add(repositories.get(decompsedConflict[0]).get(version));
 						} else {
-							if (Boolean.valueOf(String.valueOf(scriptEngine.eval(
-									version.compareTo(decompsedConflict[2]) + " " + decompsedConflict[1] + " 0")))) {
+							if (Utils.eval(version.compareTo(decompsedConflict[2]), decompsedConflict[1], 0)) {
 								uninstallList.add(repositories.get(decompsedConflict[0]).get(version));
 							}
 						}
@@ -238,5 +221,21 @@ public class Utils {
 			return true;
 		}
 		return false;
+	}
+
+	public static boolean eval(int value1, String oprand, int value2) {
+		switch (oprand) {
+		case ">=":
+			return value1 >= value2;
+		case ">":
+			return (value1 > value2);
+		case "<=":
+			return (value1 <= value2);
+		case "<":
+			return (value1 < value2);
+		case "=":
+			return (value1 == value2);
+		}
+		return true;
 	}
 }
