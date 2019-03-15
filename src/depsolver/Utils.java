@@ -5,8 +5,10 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -54,7 +56,7 @@ public class Utils {
 		return constraintArray;
 	}
 
-	public static boolean conflictsExist(Package package1, Map<String, List<String>> installedPackages) {
+	public static boolean conflictsExist(Package package1, Map<String, Set<String>> installedPackages) {
 		if (package1.getConflicts() == null || package1.getConflicts().isEmpty()) {
 			return false;
 		} else {
@@ -81,8 +83,8 @@ public class Utils {
 
 	}
 
-	public static boolean installPackage(Result result, Package package1, Map<String, List<String>> installedPackages,
-			Map<String, Map<String, Package>> repositories, List<String> path) {
+	public static boolean installPackage(Result result, Package package1, Map<String, Set<String>> installedPackages,
+			Map<String, Map<String, Package>> repositories, List<String> constraints, List<String> path) {
 		if (path.contains(package1.getName())) {
 			return false;
 		} else {
@@ -91,17 +93,22 @@ public class Utils {
 
 		// System.out.println(path);
 		boolean installed = false;
+		boolean uninstalled = false;
+		Result conjuct = new Result(0L), disjunct = new Result(Long.MAX_VALUE);
+		if (installedPackages.get(package1.getName()) != null
+				&& installedPackages.get(package1.getName()).contains(package1.getVersion())) {
+			return true;
+		}
 		if (package1 != null && (package1.getDepends() == null || package1.getDepends().isEmpty())) {
 			if (!Utils.conflictsExist(package1, installedPackages)) {
 				result.setCost(result.getCost() + package1.getSize());
 				result.getCommands().add("+" + package1.getName() + "=" + package1.getVersion());
 				return true;
 			} else {
-				uninstallConflicts(result, package1, repositories, installedPackages);
+				uninstalled = uninstallConflicts(conjuct, package1, repositories, installedPackages);
 			}
 		}
 
-		Result conjuct = new Result(0L), disjunct = new Result(Long.MAX_VALUE);
 		List<String> localPath = new ArrayList<String>();
 		for (int i = 0; i < package1.getDepends().size(); i++) {
 			localPath.addAll(path);
@@ -134,9 +141,9 @@ public class Utils {
 				Result oneDeptResult = new Result(Long.MAX_VALUE);
 				for (Package deptPackage : installList) {
 					Result local = new Result(0L);
-					Map<String, List<String>> existingPackages = new HashMap<String, List<String>>();
+					Map<String, Set<String>> existingPackages = new HashMap<String, Set<String>>();
 					for (String key : installedPackages.keySet()) {
-						existingPackages.put(key, new ArrayList<String>());
+						existingPackages.put(key, new HashSet<String>());
 						for (String version : installedPackages.get(key)) {
 							existingPackages.get(key).add(version);
 						}
@@ -144,7 +151,8 @@ public class Utils {
 					if (Utils.conflictsExist(deptPackage, installedPackages)) {
 						uninstallConflicts(local, deptPackage, repositories, existingPackages);
 					}
-					if (installed = Utils.installPackage(local, deptPackage, existingPackages, repositories, path)) {
+					if (installed = Utils.installPackage(local, deptPackage, existingPackages, repositories,
+							constraints, path)) {
 						if (oneDeptResult.getCost() > local.getCost()) {
 							oneDeptResult.setCost(local.getCost());
 							oneDeptResult.setCommands(local.getCommands());
@@ -154,6 +162,11 @@ public class Utils {
 
 				if (disjunct.getCost() > oneDeptResult.getCost()) {
 					disjunct = oneDeptResult;
+				} else if (disjunct.getCost() == oneDeptResult.getCost()) {
+					if (constraints.contains(String
+							.valueOf(oneDeptResult.getCommands().toArray()[oneDeptResult.getCommands().size() - 1]))) {
+						disjunct = oneDeptResult;
+					}
 				}
 				if (!path.isEmpty()) {
 					path.remove(path.size() - 1);
@@ -170,6 +183,13 @@ public class Utils {
 			if (!disjunct.getCommands().isEmpty()) {
 				conjuct.setCost(conjuct.getCost() + disjunct.getCost());
 				conjuct.getCommands().addAll(disjunct.getCommands());
+				for (String cmd : conjuct.getCommands()) {
+					String[] decomposedCmd = Utils.decomposeConstraint(cmd);
+					if (installedPackages.get(decomposedCmd[0].substring(1)) == null) {
+						installedPackages.put(decomposedCmd[0].substring(1), new HashSet<String>());
+					}
+					installedPackages.get(decomposedCmd[0].substring(1)).add(decomposedCmd[2]);
+				}
 			}
 		}
 
@@ -177,11 +197,11 @@ public class Utils {
 		result.getCommands().addAll(conjuct.getCommands());
 		result.getCommands().add("+" + package1.getName() + "=" + package1.getVersion());
 
-		return installed;
+		return (installed || uninstalled);
 	}
 
 	public static boolean uninstallConflicts(Result result, Package package1,
-			Map<String, Map<String, Package>> repositories, Map<String, List<String>> installedPackages) {
+			Map<String, Map<String, Package>> repositories, Map<String, Set<String>> installedPackages) {
 		if (package1 != null) {
 			for (String conflict : package1.getConflicts()) {
 				List<Package> uninstallList = new ArrayList<>();
@@ -189,19 +209,23 @@ public class Utils {
 				if (decompsedConflict[1].equals("=")) {
 					uninstallList.add(repositories.get(decompsedConflict[0]).get(decompsedConflict[2]));
 				} else {
-					for (String version : repositories.get(decompsedConflict[0]).keySet()) {
-						if (decompsedConflict[1].equals("")) {
-							uninstallList.add(repositories.get(decompsedConflict[0]).get(version));
-						} else {
-							if (Utils.eval(version.compareTo(decompsedConflict[2]), decompsedConflict[1], 0)) {
+					if (repositories.get(decompsedConflict[0]) != null) {
+						for (String version : repositories.get(decompsedConflict[0]).keySet()) {
+							if (decompsedConflict[1].equals("")) {
 								uninstallList.add(repositories.get(decompsedConflict[0]).get(version));
+							} else {
+								if (Utils.eval(version.compareTo(decompsedConflict[2]), decompsedConflict[1], 0)) {
+									uninstallList.add(repositories.get(decompsedConflict[0]).get(version));
+								}
 							}
 						}
 					}
 				}
 
 				for (Package package2 : uninstallList) {
-					Utils.uninstallPackage(result, package2, installedPackages);
+					if (!Utils.uninstallPackage(result, package2, repositories, installedPackages)) {
+						return false;
+					}
 				}
 			}
 			return true;
@@ -210,17 +234,60 @@ public class Utils {
 	}
 
 	public static boolean uninstallPackage(Result result, Package package1,
-			Map<String, List<String>> installedPackages) {
+			Map<String, Map<String, Package>> repositories, Map<String, Set<String>> installedPackages) {
 		if (package1 != null) {
-			installedPackages.get(package1.getName()).remove(package1.getVersion());
-			if (installedPackages.get(package1.getName()).size() == 0) {
-				installedPackages.remove(package1.getName());
+			if (!isUninstallpossible(package1, repositories, installedPackages))
+				return false;
+			if (installedPackages.get(package1.getName()) != null) {
+				installedPackages.get(package1.getName()).remove(package1.getVersion());
+				if (installedPackages.get(package1.getName()).size() == 0) {
+					installedPackages.remove(package1.getName());
+				}
+				result.setCost(result.getCost() + Utils.uninstallCost);
+				result.getCommands().add("-" + package1.getName() + "=" + package1.getVersion());
+				return true;
 			}
-			result.setCost(result.getCost() + Utils.uninstallCost);
-			result.getCommands().add("-" + package1.getName() + "=" + package1.getVersion());
-			return true;
 		}
 		return false;
+	}
+
+	public static boolean isUninstallpossible(Package package1, Map<String, Map<String, Package>> repositories,
+			Map<String, Set<String>> installedPackages) {
+		boolean possible = true;
+		Map<String, Set<String>> copy = new HashMap<String, Set<String>>(installedPackages);
+		copy.get(package1.getName()).remove(package1.getVersion());
+		if(copy.get(package1.getName()).isEmpty())
+			copy.remove(package1.getName());
+		for (String name : copy.keySet()) {
+			for (String version : copy.get(name)) {
+				if (repositories.get(name) != null) {
+					List<List<String>> depts = repositories.get(name).get(version).getDepends();
+					for (int i = 0; i < depts.size(); i++) {
+						possible = false;
+						for (int j = 0; j < depts.get(i).size(); j++) {
+							String[] decomposedDept = Utils.decomposeConstraint(depts.get(i).get(j));
+							if (copy.get(decomposedDept[0]) != null) {
+								for (String v1 : copy.get(decomposedDept[0])) {
+									if (Utils.eval(decomposedDept[2].compareTo(v1), decomposedDept[1], 0)) {
+										possible = true;
+										break;
+									}
+								}
+								if (possible) {
+									break;
+								}
+							}
+						}
+						if (!possible) {
+							break;
+						}
+					}
+				}
+			}
+		}
+
+		return possible;
+
 	}
 
 	public static boolean eval(int value1, String oprand, int value2) {
